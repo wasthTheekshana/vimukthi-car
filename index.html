@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management System v2</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        aside {
+            width: 260px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100%;
+        }
+
+        .brand { font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 2rem; display: flex; align-items: center; gap: 8px; }
+
+        .vehicle-selector { margin-bottom: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); }
+        .vehicle-selector label { display: block; font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 600; }
+        .vehicle-selector select { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1; }
+
+        .nav-item { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 6px; cursor: pointer; color: #64748b; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover, .nav-item.active { background: #eff6ff; color: var(--primary); font-weight: 600; }
+
+        /* Main */
+        main { margin-left: 260px; flex: 1; padding: 2rem; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        h1 { font-size: 1.5rem; }
+
+        .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9rem;}
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        /* Grid & Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 0.8rem; color: var(--secondary); margin-bottom: 5px; }
+        .stat-val { font-size: 1.5rem; font-weight: 700; margin-top: 5px; }
+
+        /* Charts (CSS Bars) */
+        .progress-container { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+        /* Table */
+        .table-container { background: var(--card-bg); border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f8fafc; font-weight: 600; color: var(--secondary); white-space: nowrap; }
+        .text-right { text-align: right; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: white; width: 90%; max-width: 800px; border-radius: 8px; display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group.full { grid-column: span 2; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 500; }
+        input { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
+
+        /* Loader */
+        .loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 200; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .hidden { display: none; }
+
+        /* Driver Pay Specifics */
+        .driver-bal-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1rem; }
+        .driver-bal-box.negative { background: #fef2f2; border-color: #fecaca; }
+        .big-text { font-size: 2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<aside>
+    <div class="brand">Fleet Manager</div>
+    <div class="vehicle-selector">
+        <label>Select Vehicle</label>
+        <select id="vehicleSelect" onchange="changeVehicle()">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    <div class="nav-item active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+    <div class="nav-item" onclick="switchTab('reports')">📈 Reports</div>
+    <div class="nav-item" onclick="switchTab('driver-pay')">💰 Driver Pay</div>
+</aside>
+
+<main>
+    <!-- Dashboard -->
+    <div id="dashboard-view">
+        <header>
+            <h1>Dashboard <small id="currentVehicleTitle" style="font-size: 0.9rem; color: #64748b; font-weight: normal;"></small></h1>
+            <button class="btn btn-primary" onclick="openEntryModal()">+ Add Daily Entry</button>
+        </header>
+
+        <!-- Dashboard Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Cash to be Collected</div>
+                <div class="stat-val" id="val-cash-collect">Rs 0.00</div>
+                <small style="color:#64748b; font-size:0.75rem">Total - Online - VehCost - Share</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Petrol Consumption</div>
+                <div class="stat-val" id="val-petrol-cons">Rs 0.00</div>
+                <small style="color:#64748b; font-size:0.75rem">Per KM</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Operational Cost</div>
+                <div class="stat-val" id="val-total-cost">Rs 0.00</div>
+                <div class="progress-container"><div class="progress-bar" id="bar-cost" style="width:0%; background:var(--secondary)"></div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Net Profit</div>
+                <div class="stat-val" id="val-profit">Rs 0.00</div>
+                <div class="progress-container"><div class="progress-bar" id="bar-profit" style="width:0%; background:var(--success)"></div></div>
+            </div>
+        </div>
+
+        <!-- Daily Table -->
+        <h3>Detailed Breakdown</h3>
+        <div class="table-container">
+            <table id="mainTable">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Excess</th>
+                    <th>Driver Share</th>
+                    <th>Petrol/KM</th>
+                    <th>Total Cost</th>
+                    <th>Cash Collect</th>
+                    <th>Profit</th>
+                </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Reports -->
+    <div id="reports-view" class="hidden">
+        <header><h1>Weekly Target Reports</h1></header>
+        <div class="table-container">
+            <table id="reportTable">
+                <thead>
+                <tr>
+                    <th>Week</th>
+                    <th>Target Sum (Days x 15k)</th>
+                    <th>Actual Sum</th>
+                    <th>Miss Amount</th>
+                    <th>Miss %</th>
+                </tr>
+                </thead>
+                <tbody id="reportBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Driver Pay -->
+    <div id="driver-pay-view" class="hidden">
+        <header>
+            <h1>Driver Payment Management</h1>
+        </header>
+
+        <div class="driver-bal-box" id="driver-bal-box">
+            <div class="stat-label">Balance to Pay Driver</div>
+            <div class="big-text" id="driver-bal-val">Rs 0.00</div>
+            <small>Calculated: (Total Payable - Total Paid)</small>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Driver Payable</div>
+                <div class="stat-val" id="payable-amount">Rs 0.00</div>
+                <small>(Daily Fee + Share + Pass)</small>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Paid</div>
+                <div class="stat-val" id="paid-amount">Rs 0.00</div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="openPayModal()">+ Record Payment</button>
+        <br><br>
+
+        <div class="table-container">
+            <table id="payTable">
+                <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+                </thead>
+                <tbody id="payTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Entry Modal -->
+<div class="modal-overlay" id="entryModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>New Entry</h3>
+            <button class="btn btn-sm btn-danger" onclick="closeEntryModal()">Close</button>
+        </div>
+        <div class="modal-body">
+            <form id="entryForm" class="form-grid">
+                <input type="hidden" id="entryVehicleID">
+                <div class="form-group"><label>Date</label><input type="date" id="f_date" required></div>
+                <div class="form-group"><label>Target (Rs)</label><input type="number" id="f_target" value="15000"></div>
+                <div class="form-group"><label>Online (Rs)</label><input type="number" id="f_online" value="0"></div>
+                <div class="form-group"><label>Total Amount (Rs)</label><input type="number" id="f_cash" value="0"></div>
+                <div class="form-group"><label>Start KM</label><input type="number" id="f_startKm" required></div>
+                <div class="form-group"><label>End KM</label><input type="number" id="f_endKm" required></div>
+                <div class="form-group"><label>Driver Pass (Rs)</label><input type="number" id="f_driverPass" value="0"></div>
+                <div class="form-group"><label>Daily Petrol (Rs)</label><input type="number" id="f_petrol" value="0"></div>
+                <div class="form-group"><label>Vehicle Cost (Rs)</label><input type="number" id="f_vehicleCost" value="0"></div>
+                <div class="form-group"><label>Driver Fee (Rs)</label><input type="number" id="f_driverFee" value="4000"></div>
+                <div class="form-group full"><label>Remarks</label><input type="text" id="f_remarks"></div>
+                <div class="form-group full" style="text-align: right">
+                    <button type="submit" class="btn btn-primary">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="payModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Record Driver Payment</h3>
+            <button class="btn btn-sm btn-danger" onclick="closePayModal()">Close</button>
+        </div>
+        <div class="modal-body">
+            <form id="payForm">
+                <input type="hidden" id="payVehicleID">
+                <div class="form-group"><label>Date</label><input type="date" id="p_date" required></div>
+                <div class="form-group"><label>Amount (Rs)</label><input type="number" id="p_amount" required></div>
+                <div class="form-group full"><label>Description</label><input type="text" id="p_desc" placeholder="e.g. Weekly Salary"></div>
+                <div style="text-align: right"><button type="submit" class="btn btn-primary">Save Payment</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Loader -->
+<div class="loader" id="loader"><div class="spinner"></div></div>
+
+<script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYDeQnnLzz27OmAdkhH-w0MGthe5sWsRKqN8CfZNgj5oxeM4ZjyTWF8V8tdwEgCdafUw/exec";
+    let vehicles = [], records = [], payments = [], selectedVehicleId = null;
+
+    window.onload = async () => {
+        await fetchVehicles();
+        document.getElementById('f_date').valueAsDate = new Date();
+        document.getElementById('p_date').valueAsDate = new Date();
+    };
+
+    /* --- API --- */
+    async function fetchVehicles() {
+        showLoader(true);
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "get_vehicles" }) });
+            const data = await res.json();
+            vehicles = data.vehicles;
+            const sel = document.getElementById('vehicleSelect');
+            sel.innerHTML = vehicles.map(v => `<option value="${v}">${v}</option>`).join('');
+            if(vehicles.length) changeVehicle();
+        } catch(e) { console.error(e); }
+        showLoader(false);
+    }
+
+    async function fetchRecords(vid) {
+        showLoader(true);
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "get_records", vehicleID: vid }) });
+            const data = await res.json();
+            records = data.records || [];
+            renderDashboard();
+            renderReports();
+        } catch(e) { console.error(e); }
+        showLoader(false);
+    }
+
+    async function fetchPayments(vid) {
+        showLoader(true);
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "get_payments", vehicleID: vid }) });
+            const data = await res.json();
+            payments = data.payments || [];
+            renderDriverPay();
+        } catch(e) { console.error(e); }
+        showLoader(false);
+    }
+
+    async function saveRecord(recordData) {
+        showLoader(true);
+        await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "add_record", payload: recordData }) });
+        showLoader(false);
+        closeEntryModal();
+        fetchRecords(selectedVehicleId);
+    }
+
+    async function savePayment(data) {
+        showLoader(true);
+        await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: "add_payment", payload: data }) });
+        showLoader(false);
+        closePayModal();
+        fetchPayments(selectedVehicleId);
+    }
+
+    /* --- LOGIC & FORMULAS --- */
+    function calculateMetrics(r) {
+        const total = (parseFloat(r.online)||0) + (parseFloat(r.cash)||0);
+        const target = parseFloat(r.target)||0;
+        const excess = (parseFloat(r.cash)||0) - target;
+
+        // Driver Share Logic (Excess Target Allowance)
+        // If Excess < 0, Share is 0. Else 25%.
+        const driverShare = excess > 0 ? (excess * 0.25) : 0;
+
+        const start = parseFloat(r.startKm)||0;
+        const end = parseFloat(r.endKm)||0;
+        const kmRun = end - start;
+
+        const petrolCost = parseFloat(r.petrol)||0;
+        const petrolPerKm = kmRun > 0 ? (petrolCost / kmRun) : 0;
+
+        const vehicleCost = parseFloat(r.vehicleCost)||0;
+        const driverPass = parseFloat(r.driverPass)||0;
+        const driverFee = parseFloat(r.driverFee)||0;
+
+        // 3. Total Cost = Share + Pass + Petrol + VehCost + Fee
+        const totalCost = driverShare + driverPass + petrolCost + vehicleCost + driverFee;
+
+        // 1. Cash to be Collected = Total - Online - VehicleCost - Share
+        const cashToCollect = (parseFloat(r.cash)||0) - ((parseFloat(r.online)||0) + vehicleCost + driverShare);
+
+        // 4. Profit = Total - Total Cost
+        const profit = (parseFloat(r.cash)||0) - totalCost;
+
+        return { total, excess, driverShare, kmRun, petrolPerKm, totalCost, cashToCollect, profit };
+    }
+
+    /* --- RENDER --- */
+    function renderDashboard() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let totCashCollect = 0, avgPetrol = 0, totCost = 0, totProfit = 0;
+
+        records.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        records.forEach(r => {
+            const m = calculateMetrics(r);
+            totCashCollect += m.cashToCollect;
+            totCost += m.totalCost;
+            totProfit += m.profit;
+            if(m.petrolPerKm > 0) avgPetrol += m.petrolPerKm;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.date}</td>
+                <td>${fmt(m.total)}</td>
+                <td class="${m.excess>=0?'text-green':'text-red'}">${fmt(m.excess)}</td>
+                <td>${fmt(m.driverShare)}</td>
+                <td>${fmt(m.petrolPerKm)}/km</td>
+                <td>${fmt(m.totalCost)}</td>
+                <td><strong>${fmt(m.cashToCollect)}</strong></td>
+                <td class="${m.profit>=0?'text-green':'text-red'}">${fmt(m.profit)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('val-cash-collect').innerText = fmt(totCashCollect);
+        document.getElementById('val-petrol-cons').innerText = records.length ? fmt(avgPetrol/records.length) + "/km" : "0/km";
+        document.getElementById('val-total-cost').innerText = fmt(totCost);
+        document.getElementById('val-profit').innerText = fmt(totProfit);
+
+        // Visual Bar
+        const pct = totCost > 0 ? Math.min((totProfit/totCost)*100, 100) : 0;
+        document.getElementById('bar-profit').style.width = `${pct}%`;
+    }
+
+    function renderReports() {
+        const tbody = document.getElementById('reportBody');
+        tbody.innerHTML = '';
+
+        // Group by Week
+        const weeks = {};
+        records.forEach(r => {
+            const date = new Date(r.date);
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const key = `${d.getUTCFullYear()}-W${Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7)}`;
+
+            if(!weeks[key]) weeks[key] = { days: 0, total: 0 };
+            weeks[key].days++;
+            weeks[key].total += calculateMetrics(r).total;
+        });
+
+        Object.keys(weeks).reverse().forEach(key => {
+            const w = weeks[key];
+            // Formula: Target (15000*days) - Total Amount
+            const targetSum = 15000 * w.days; // Fixed per prompt
+            const miss = targetSum - w.total;
+            const missPct = targetSum > 0 ? ((miss/targetSum)*100).toFixed(1) : 0;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${key}</td>
+                <td>${fmt(targetSum)}</td>
+                <td>${fmt(w.total)}</td>
+                <td class="${miss > 0 ? 'text-red' : 'text-green'}">${fmt(miss)}</td>
+                <td>
+                    <div class="progress-container" style="width:80px; display:inline-block; vertical-align:middle;">
+                        <div class="progress-bar" style="width:${Math.min(missPct,100)}%; background:${miss>0?'var(--danger)':'var(--success)'}"></div>
+                    </div> ${missPct}%
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderDriverPay() {
+        const tbody = document.getElementById('payTableBody');
+        tbody.innerHTML = '';
+
+        // 1. Calculate Total Payable from Data
+        // Payable = Daily Fee + Driver Share + Driver Pass
+        let totalPayable = 0;
+        records.forEach(r => {
+            const m = calculateMetrics(r);
+            totalPayable += (parseFloat(r.driverFee)||0) + m.driverShare + (parseFloat(r.driverPass)||0);
+        });
+
+        // 2. Calculate Total Paid from Payments List
+        let totalPaid = 0;
+        payments.forEach(p => {
+            totalPaid += parseFloat(p.amount);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${p.date}</td>
+                <td>${p.desc}</td>
+                <td>${fmt(p.amount)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const balance = totalPayable - totalPaid;
+
+        document.getElementById('payable-amount').innerText = fmt(totalPayable);
+        document.getElementById('paid-amount').innerText = fmt(totalPaid);
+
+        const balBox = document.getElementById('driver-bal-box');
+        document.getElementById('driver-bal-val').innerText = fmt(balance);
+
+        if(balance < 0) {
+            balBox.classList.add('negative');
+            document.getElementById('driver-bal-val').classList.add('text-red');
+        } else {
+            balBox.classList.remove('negative');
+            document.getElementById('driver-bal-val').classList.remove('text-red');
+        }
+    }
+
+    /* --- UI HELPERS --- */
+    function changeVehicle() {
+        selectedVehicleId = document.getElementById('vehicleSelect').value;
+        document.getElementById('currentVehicleTitle').innerText = `(${selectedVehicleId})`;
+        document.getElementById('entryVehicleID').value = selectedVehicleId;
+        document.getElementById('payVehicleID').value = selectedVehicleId;
+
+        fetchRecords(selectedVehicleId);
+        fetchPayments(selectedVehicleId);
+    }
+
+    function switchTab(id) {
+        document.querySelectorAll('[id$="-view"]').forEach(e => e.classList.add('hidden'));
+        document.getElementById(id + '-view').classList.remove('hidden');
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+
+    function openEntryModal() {
+        if(!selectedVehicleId) return alert("Select vehicle");
+        document.getElementById('entryModal').classList.add('open');
+    }
+    function closeEntryModal() {
+        document.getElementById('entryModal').classList.remove('open');
+        document.getElementById('entryForm').reset();
+        document.getElementById('f_date').valueAsDate = new Date();
+    }
+
+    function openPayModal() {
+        if(!selectedVehicleId) return alert("Select vehicle");
+        document.getElementById('payModal').classList.add('open');
+    }
+    function closePayModal() {
+        document.getElementById('payModal').classList.remove('open');
+        document.getElementById('payForm').reset();
+        document.getElementById('p_date').valueAsDate = new Date();
+    }
+
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
+    function fmt(n) { return "Rs " + parseFloat(n).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    /* --- SUBMIT --- */
+    document.getElementById('entryForm').onsubmit = (e) => {
+        e.preventDefault();
+        const r = {
+            vehicleID: document.getElementById('entryVehicleID').value,
+            date: document.getElementById('f_date').value,
+            target: document.getElementById('f_target').value,
+            online: document.getElementById('f_online').value,
+            cash: document.getElementById('f_cash').value,
+            startKm: document.getElementById('f_startKm').value,
+            endKm: document.getElementById('f_endKm').value,
+            driverPass: document.getElementById('f_driverPass').value,
+            petrol: document.getElementById('f_petrol').value,
+            vehicleCost: document.getElementById('f_vehicleCost').value,
+            driverFee: document.getElementById('f_driverFee').value,
+            remarks: document.getElementById('f_remarks').value
+        };
+        if(parseFloat(r.endKm) < parseFloat(r.startKm)) return alert("End KM < Start KM");
+        saveRecord(r);
+    };
+
+    document.getElementById('payForm').onsubmit = (e) => {
+        e.preventDefault();
+        savePayment({
+            vehicleID: document.getElementById('payVehicleID').value,
+            date: document.getElementById('p_date').value,
+            amount: document.getElementById('p_amount').value,
+            desc: document.getElementById('p_desc').value
+        });
+    };
+
+</script>
+</body>
+</html>
